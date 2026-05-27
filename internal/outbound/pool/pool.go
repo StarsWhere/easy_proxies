@@ -33,6 +33,7 @@ const (
 	modeSequential = "sequential"
 	modeRandom     = "random"
 	modeBalance    = "balance"
+	modeLatency    = "latency"
 )
 
 // Options controls pool outbound behaviour.
@@ -168,6 +169,8 @@ func normalizeOptions(options Options) Options {
 		options.Mode = modeRandom
 	case modeBalance:
 		options.Mode = modeBalance
+	case modeLatency:
+		options.Mode = modeLatency
 	default:
 		options.Mode = modeSequential
 	}
@@ -458,6 +461,33 @@ func (p *poolOutbound) selectMember(candidates []*memberState) *memberState {
 			}
 		}
 		return selected
+	case modeLatency:
+		// Pick the candidate with the lowest measured latency.
+		// Candidates without a latency reading (never probed) are deprioritized;
+		// if all are unmeasured, fall back to round-robin.
+		var selected *memberState
+		var minLatency time.Duration
+		hasMeasured := false
+		for _, member := range candidates {
+			if member.entry == nil {
+				continue
+			}
+			latency := member.entry.LastLatency()
+			if latency <= 0 {
+				continue
+			}
+			if !hasMeasured || latency < minLatency {
+				selected = member
+				minLatency = latency
+				hasMeasured = true
+			}
+		}
+		if selected != nil {
+			return selected
+		}
+		// Fallback: no measurements yet — round-robin.
+		idx := int(p.rrCounter.Add(1)-1) % len(candidates)
+		return candidates[idx]
 	default:
 		idx := int(p.rrCounter.Add(1)-1) % len(candidates)
 		return candidates[idx]

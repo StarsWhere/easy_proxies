@@ -753,7 +753,7 @@ func (fi *flexInt) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 type clashConfig struct {
-	Proxies []clashProxy `yaml:"proxies"`
+	Proxies []yaml.Node `yaml:"proxies"`
 }
 
 type clashProxy struct {
@@ -801,7 +801,9 @@ type clashRealityOptions struct {
 	ShortID   string `yaml:"short-id"`
 }
 
-// parseClashYAML parses Clash YAML format and converts to NodeConfig
+// parseClashYAML parses Clash YAML format and converts to NodeConfig.
+// Per-proxy decoding: a single malformed entry won't fail the whole subscription;
+// failed proxies are logged and skipped (fixes #23).
 func parseClashYAML(content string) ([]NodeConfig, error) {
 	var clash clashConfig
 	if err := yaml.Unmarshal([]byte(content), &clash); err != nil {
@@ -809,14 +811,27 @@ func parseClashYAML(content string) ([]NodeConfig, error) {
 	}
 
 	var nodes []NodeConfig
-	for _, proxy := range clash.Proxies {
-		uri := convertClashProxyToURI(proxy)
-		if uri != "" {
-			nodes = append(nodes, NodeConfig{
-				Name: proxy.Name,
-				URI:  uri,
-			})
+	skipped := 0
+	for i, raw := range clash.Proxies {
+		var proxy clashProxy
+		if err := raw.Decode(&proxy); err != nil {
+			skipped++
+			log.Printf("[subscription] WARN: skip proxy #%d (decode error): %v", i, err)
+			continue
 		}
+		uri := convertClashProxyToURI(proxy)
+		if uri == "" {
+			skipped++
+			log.Printf("[subscription] WARN: skip proxy %q (unsupported type %q)", proxy.Name, proxy.Type)
+			continue
+		}
+		nodes = append(nodes, NodeConfig{
+			Name: proxy.Name,
+			URI:  uri,
+		})
+	}
+	if skipped > 0 {
+		log.Printf("[subscription] parsed %d nodes, skipped %d malformed/unsupported entries", len(nodes), skipped)
 	}
 
 	return nodes, nil

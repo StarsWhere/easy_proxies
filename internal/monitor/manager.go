@@ -649,3 +649,17 @@ func (h *EntryHandle) MarkAvailable(available bool) {
 	h.ref.available = available
 	h.ref.mu.Unlock()
 }
+
+// LastLatency returns the last measured probe latency.
+// Returns 0 if no measurement is available yet.
+func (h *EntryHandle) LastLatency() time.Duration {
+	if h == nil || h.ref == nil {
+		return 0
+	}
+	h.ref.mu.RLock()
+	defer h.ref.mu.RUnlock()
+	if !h.ref.available {
+		return 0
+	}
+	return h.ref.lastProbe
+}

@@ -91,7 +91,7 @@ listener:
   password: pass
 
 pool:
-  mode: sequential    # sequential / random / balance
+  mode: sequential    # sequential / random / balance / latency
   failure_threshold: 3
   blacklist_duration: 24h
 
