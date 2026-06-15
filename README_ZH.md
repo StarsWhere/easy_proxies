@@ -161,6 +161,58 @@ dns:
 - 省略项默认值可在 `internal/config/config.go` 中查看。
 - 日志轮转通过 `log` 配置段设置；当 `output: file` 时，日志同时写入控制台和文件，并自动轮转。
 
+## 常见问题
+
+### Docker 权限问题
+
+**问题描述**：使用 `docker-compose.yml` 映射配置目录时，可能遇到 "permission denied" 或 "cannot write to /etc/easy_proxies" 等权限错误。
+
+**原因分析**：容器以非 root 用户运行（docker-compose.yml 中指定 `user: "${UID:-10001}:${GID:-10001}"`），但宿主机挂载目录的所有权可能不匹配。
+
+**解决方案**：
+
+1. **使用提供的 `start.sh` 脚本（推荐）**：
+   ```bash
+   ./start.sh
+   ```
+   该脚本会自动：
+   - 创建 `data` 和 `logs` 目录
+   - 设置正确的权限
+   - 传递当前用户的 UID/GID 给 Docker
+
+2. **手动修复权限**：
+   ```bash
+   mkdir -p data logs
+   sudo chown -R $(id -u):$(id -g) data logs
+   docker compose up -d
+   ```
+
+3. **预先创建配置文件**（备选方法）：
+   ```bash
+   mkdir -p data
+   cp config.example.yaml data/config.yaml
+   touch data/nodes.txt
+   chown -R $(id -u):$(id -g) data
+   docker compose up -d
+   ```
+
+**docker run 命令方式**：
+```bash
+mkdir -p data logs
+chmod -R u+w data logs
+docker run --user $(id -u):$(id -g) \
+  -v $(pwd)/data:/etc/easy_proxies \
+  -v $(pwd)/logs:/app/logs \
+  --network host \
+  ghcr.io/jasonwong1991/easy_proxies:latest
+```
+
+### 其他常见问题
+
+- **"配置文件未找到"**：确保挂载目录中存在 `config.yaml` 文件
+- **"无法绑定端口"**：检查端口是否被其他服务占用
+- **"所有节点健康检查失败"**：验证代理 URI 格式正确，且上游服务器可达
+
 ## 更新日志
 
 详见 [CHANGELOG.md](CHANGELOG.md)。

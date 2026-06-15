@@ -357,6 +357,58 @@ services:
 | 1221 | GeoIP region router (when enabled, configurable) |
 | 24000+ | Multi-port mode (one per node) |
 
+## Troubleshooting
+
+### Docker Permission Issues
+
+**Problem**: When using `docker-compose.yml` with volume mapping, you may encounter permission errors like "permission denied" or "cannot write to /etc/easy_proxies".
+
+**Root Cause**: The container runs as a non-root user (specified by `user: "${UID:-10001}:${GID:-10001}"` in docker-compose.yml), but the mounted host directory may have different ownership.
+
+**Solutions**:
+
+1. **Use the provided `start.sh` script (Recommended)**:
+   ```bash
+   ./start.sh
+   ```
+   This script automatically:
+   - Creates `data` and `logs` directories
+   - Sets correct permissions
+   - Passes your current UID/GID to Docker
+
+2. **Manually fix permissions**:
+   ```bash
+   mkdir -p data logs
+   sudo chown -R $(id -u):$(id -g) data logs
+   docker compose up -d
+   ```
+
+3. **Pre-create config files** (alternative method):
+   ```bash
+   mkdir -p data
+   cp config.example.yaml data/config.yaml
+   touch data/nodes.txt
+   chown -R $(id -u):$(id -g) data
+   docker compose up -d
+   ```
+
+**For docker run command**:
+```bash
+mkdir -p data logs
+chmod -R u+w data logs
+docker run --user $(id -u):$(id -g) \
+  -v $(pwd)/data:/etc/easy_proxies \
+  -v $(pwd)/logs:/app/logs \
+  --network host \
+  ghcr.io/jasonwong1991/easy_proxies:latest
+```
+
+### Other Common Issues
+
+- **"Config file not found"**: Ensure `config.yaml` exists in the mounted directory
+- **"Cannot bind port"**: Check if the port is already in use by another service
+- **"All nodes failed health check"**: Verify your proxy URIs are correct and the upstream servers are reachable
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for version history.

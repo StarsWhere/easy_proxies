@@ -445,7 +445,7 @@ func buildNodeOutbound(tag, rawURI string, skipCertVerify bool) (option.Outbound
 			return option.Outbound{}, err
 		}
 		return option.Outbound{Type: C.TypeVMess, Tag: tag, Options: &opts}, nil
-	case "socks5", "socks":
+	case "socks5", "socks5h", "socks":
 		opts, err := buildSOCKSOptions(parsed)
 		if err != nil {
 			return option.Outbound{}, err

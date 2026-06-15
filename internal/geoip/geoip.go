@@ -513,7 +513,7 @@ func extractHostFromURI(uri string) string {
 		"vless://", "trojan://",
 		"hysteria://", "hysteria2://", "hy2://",
 		"anytls://", "tuic://",
-		"socks5://", "socks://",
+		"socks5://", "socks5h://", "socks://",
 		"http://", "https://",
 	}
 	for _, scheme := range standardSchemes {
