@@ -115,6 +115,23 @@ func (s *sharedMemberState) isBlacklisted(now time.Time) bool {
 	return blacklisted
 }
 
+// blacklistRemaining returns the remaining blacklist duration.
+// Returns 0 if not blacklisted.
+func (s *sharedMemberState) blacklistRemaining(now time.Time) time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.blacklisted {
+		return 0
+	}
+
+	remaining := s.blacklistedUntil.Sub(now)
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
 func (s *sharedMemberState) forceRelease() {
 	s.mu.Lock()
 	s.failures = 0

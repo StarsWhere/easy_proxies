@@ -212,6 +212,15 @@ docker run --user $(id -u):$(id -g) \
 - **"配置文件未找到"**：确保挂载目录中存在 `config.yaml` 文件
 - **"无法绑定端口"**：检查端口是否被其他服务占用
 - **"所有节点健康检查失败"**：验证代理 URI 格式正确，且上游服务器可达
+- **"代理之前正常使用，突然失效"**：检查节点是否被加入黑名单（连续失败 3 次后触发，默认持续 24 小时）
+  - **解决方案 1**：通过 WebUI 释放 - 点击节点旁边的"释放"按钮
+  - **解决方案 2**：通过 API 释放 - `POST http://localhost:9091/api/nodes/{tag}/release`
+  - **解决方案 3**：在 `config.yaml` 中降低黑名单持续时间：
+    ```yaml
+    pool:
+      blacklist_duration: 1h  # 从默认的 24h 改为 1h
+    ```
+  - 查看黑名单事件日志：`docker compose logs | grep "BLACKLISTED"`
 
 ## 更新日志
 

@@ -540,6 +540,11 @@ func (p *poolOutbound) availableMembersLocked(now time.Time, network string, buf
 	for _, member := range p.members {
 		// Check blacklist via shared state (auto-clears if expired)
 		if member.shared != nil && member.shared.isBlacklisted(now) {
+			// Log blacklisted nodes for debugging
+			remaining := member.shared.blacklistRemaining(now)
+			if remaining > 0 {
+				p.logger.Debug("skipping blacklisted node: ", member.tag, ", remaining: ", remaining.Round(time.Second))
+			}
 			continue
 		}
 		if network != "" && !common.Contains(member.outbound.Network(), network) {
@@ -629,10 +634,11 @@ func (p *poolOutbound) recordFailure(member *memberState, cause error) {
 		p.logger.Warn("proxy ", member.tag, " failure (no shared state): ", cause)
 		return
 	}
-	failures, blacklisted, _ := member.shared.recordFailure(cause, p.options.FailureThreshold, p.options.BlacklistDuration)
+	failures, blacklisted, until := member.shared.recordFailure(cause, p.options.FailureThreshold, p.options.BlacklistDuration)
 	if blacklisted {
 		p.logger.Warn("proxy ", member.tag, " blacklisted for ", p.options.BlacklistDuration, ": ", cause)
-		log.Printf("[pool] %s blacklisted for %s: %v", member.tag, p.options.BlacklistDuration, cause)
+		log.Printf("⚠️  [pool] %s BLACKLISTED for %s (until %s): %v", member.tag, p.options.BlacklistDuration, until.Format("15:04:05"), cause)
+		log.Printf("    To release immediately, use WebUI or: POST /api/nodes/%s/release", member.tag)
 	} else {
 		p.logger.Warn("proxy ", member.tag, " failure ", failures, "/", p.options.FailureThreshold, ": ", cause)
 		log.Printf("[pool] %s failure %d/%d: %v", member.tag, failures, p.options.FailureThreshold, cause)

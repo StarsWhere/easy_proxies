@@ -408,6 +408,15 @@ docker run --user $(id -u):$(id -g) \
 - **"Config file not found"**: Ensure `config.yaml` exists in the mounted directory
 - **"Cannot bind port"**: Check if the port is already in use by another service
 - **"All nodes failed health check"**: Verify your proxy URIs are correct and the upstream servers are reachable
+- **"Proxy was working but suddenly stopped"**: Check if the node is blacklisted (appears after 3 consecutive failures, default duration: 24h)
+  - **Solution 1**: Release via WebUI - click the "Release" button next to the node
+  - **Solution 2**: Release via API - `POST http://localhost:9091/api/nodes/{tag}/release`
+  - **Solution 3**: Reduce blacklist duration in `config.yaml`:
+    ```yaml
+    pool:
+      blacklist_duration: 1h  # Change from default 24h to 1h
+    ```
+  - Check logs for blacklist events: `docker compose logs | grep "BLACKLISTED"`
 
 ## Changelog
 

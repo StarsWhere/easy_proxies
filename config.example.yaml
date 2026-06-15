@@ -53,7 +53,9 @@ pool:
   mode: sequential
   # 连续失败多少次后加入黑名单
   failure_threshold: 3
-  # 黑名单持续时间
+  # 黑名单持续时间（建议 1h-6h，默认 24h 可能过长）
+  # 节点被黑名单后将完全不可用，直到时间到期或手动释放
+  # 可通过 WebUI 或 API 手动释放：POST /api/nodes/{tag}/release
   blacklist_duration: 24h
   # 是否启用代理重试：节点拨号失败后自动切换下一个节点重试
   # 多端口模式下池只有 1 个成员，重试会再次拨同一节点
