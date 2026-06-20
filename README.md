@@ -264,7 +264,7 @@ resp, err := client.Get("http://example.com")
 | VLESS | `vless://` | TCP, WS, HTTP/2, gRPC, HTTPUpgrade; TLS/Reality/uTLS |
 | VMess | `vmess://` | WS, HTTP/2, gRPC, HTTPUpgrade; TLS/uTLS |
 | Trojan | `trojan://` | WS, HTTP/2, gRPC, HTTPUpgrade; TLS/Reality/uTLS |
-| Shadowsocks | `ss://` | Direct; SIP002 format |
+| Shadowsocks | `ss://`, `shadowsocks://` | Direct; SIP002 and legacy whole-payload Base64 formats |
 | Hysteria2 | `hysteria2://`, `hy2://` | QUIC-based |
 | TUIC | `tuic://` | QUIC-based |
 | AnyTLS | `anytls://` | TLS |
@@ -278,6 +278,7 @@ resp, err := client.Get("http://example.com")
 ```yaml
 nodes:
   - uri: "vless://uuid@server:443?security=tls&type=ws&path=/path#Name"
+  - uri: "ss://base64(method:password@server:port)#Name"
 ```
 
 ### Nodes File

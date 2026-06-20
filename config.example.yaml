@@ -167,6 +167,7 @@ nodes:
 # - Trojan:   trojan://password@server:port?params#name
 # - SS:       ss://method:password@server:port#name
 #             ss://base64(method:password)@server:port#name
+#             ss://base64(method:password@server:port)#name
 # - Hysteria2: hy2://password@server:port?params#name
 # - SOCKS5:  socks5://[user:pass@]server:port#name
 # - HTTP:    http://[user:pass@]server:port#name

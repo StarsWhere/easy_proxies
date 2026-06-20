@@ -140,6 +140,8 @@ dns:
 - `vless`
 - `trojan`
 - `ss` / `shadowsocks`
+  - 支持 SIP002：`ss://base64(method:password)@server:port#name`
+  - 支持旧格式：`ss://base64(method:password@server:port)#name`
 - `hysteria2` / `hy2`
 - `socks5` / `socks`
 - `http` / `https`
@@ -254,4 +256,3 @@ go test ./...
 ## 许可证
 
 MIT License
-
