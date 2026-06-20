@@ -2,9 +2,9 @@ package geoip
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"easy_proxies/internal/ssuri"
 
 	"github.com/oschwald/geoip2-golang"
 )
@@ -498,8 +500,8 @@ func extractHostFromURI(uri string) string {
 		return extractVMessHost(uri)
 	}
 
-	// Shadowsocks: ss://base64(method:password)@host:port#name
-	if strings.HasPrefix(lowerURI, "ss://") {
+	// Shadowsocks: SIP002 and legacy whole-payload base64 formats.
+	if strings.HasPrefix(lowerURI, "ss://") || strings.HasPrefix(lowerURI, "shadowsocks://") {
 		return extractSSHost(uri)
 	}
 
@@ -580,25 +582,11 @@ func extractVMessHost(uri string) string {
 }
 
 func extractSSHost(uri string) string {
-	// Remove ss:// prefix
-	content := strings.TrimPrefix(uri, "ss://")
-
-	// Remove fragment (#name)
-	if idx := strings.Index(content, "#"); idx != -1 {
-		content = content[:idx]
+	parsed, err := ssuri.Parse(uri)
+	if err != nil {
+		return ""
 	}
-
-	// Check if it's the new format: base64@host:port
-	if atIdx := strings.LastIndex(content, "@"); atIdx != -1 {
-		hostPort := content[atIdx+1:]
-		if colonIdx := strings.LastIndex(hostPort, ":"); colonIdx != -1 {
-			return hostPort[:colonIdx]
-		}
-		return hostPort
-	}
-
-	// Old format: entire content is base64
-	return ""
+	return parsed.Server
 }
 
 func extractSSRHost(uri string) string {
