@@ -16,6 +16,7 @@ import (
 	"easy_proxies/internal/config"
 	"easy_proxies/internal/geoip"
 	poolout "easy_proxies/internal/outbound/pool"
+	"easy_proxies/internal/ssuri"
 
 	C "github.com/sagernet/sing-box/constant"
 	"github.com/sagernet/sing-box/option"
@@ -459,6 +460,14 @@ func buildStickyInbound(cfg *config.Config) (option.Inbound, error) {
 }
 
 func buildNodeOutbound(tag, rawURI string, skipCertVerify bool) (option.Outbound, error) {
+	if isShadowsocksURI(rawURI) {
+		opts, err := buildShadowsocksOptions(rawURI)
+		if err != nil {
+			return option.Outbound{}, err
+		}
+		return option.Outbound{Type: C.TypeShadowsocks, Tag: tag, Options: &opts}, nil
+	}
+
 	parsed, err := url.Parse(rawURI)
 	if err != nil {
 		normalizedURI, normalized := normalizeHysteria2PortHoppingURI(rawURI)
@@ -483,12 +492,6 @@ func buildNodeOutbound(tag, rawURI string, skipCertVerify bool) (option.Outbound
 			return option.Outbound{}, err
 		}
 		return option.Outbound{Type: C.TypeHysteria2, Tag: tag, Options: &opts}, nil
-	case "ss", "shadowsocks":
-		opts, err := buildShadowsocksOptions(parsed)
-		if err != nil {
-			return option.Outbound{}, err
-		}
-		return option.Outbound{Type: C.TypeShadowsocks, Tag: tag, Options: &opts}, nil
 	case "trojan":
 		opts, err := buildTrojanOptions(parsed, skipCertVerify)
 		if err != nil {
@@ -754,38 +757,22 @@ func buildV2RayTransport(query url.Values) (*option.V2RayTransportOptions, error
 	return options, nil
 }
 
-func buildShadowsocksOptions(u *url.URL) (option.ShadowsocksOutboundOptions, error) {
-	server, port, err := hostPort(u, 8388)
+func buildShadowsocksOptions(rawURI string) (option.ShadowsocksOutboundOptions, error) {
+	parsed, err := ssuri.Parse(rawURI)
 	if err != nil {
 		return option.ShadowsocksOutboundOptions{}, err
 	}
 
-	// Decode userinfo (base64 encoded method:password)
-	userInfo := u.User.String()
-	decoded, err := base64.RawURLEncoding.DecodeString(userInfo)
-	if err != nil {
-		// Try standard base64
-		decoded, err = base64.StdEncoding.DecodeString(userInfo)
-		if err != nil {
-			return option.ShadowsocksOutboundOptions{}, fmt.Errorf("decode shadowsocks userinfo: %w", err)
-		}
-	}
-
-	parts := strings.SplitN(string(decoded), ":", 2)
-	if len(parts) != 2 {
-		return option.ShadowsocksOutboundOptions{}, errors.New("shadowsocks userinfo format must be method:password")
-	}
-
-	method := normalizeShadowsocksMethod(parts[0])
-	password := parts[1]
+	method := normalizeShadowsocksMethod(parsed.Method)
+	password := parsed.Password
 
 	opts := option.ShadowsocksOutboundOptions{
-		ServerOptions: option.ServerOptions{Server: server, ServerPort: uint16(port)},
+		ServerOptions: option.ServerOptions{Server: parsed.Server, ServerPort: uint16(parsed.Port)},
 		Method:        method,
 		Password:      password,
 	}
 
-	query := u.Query()
+	query := parsed.Query
 	if plugin := query.Get("plugin"); plugin != "" {
 		// sing-box library mode doesn't support external plugins like v2ray-plugin
 		// These require the plugin binary to be installed separately
@@ -793,6 +780,11 @@ func buildShadowsocksOptions(u *url.URL) (option.ShadowsocksOutboundOptions, err
 	}
 
 	return opts, nil
+}
+
+func isShadowsocksURI(rawURI string) bool {
+	lower := strings.ToLower(rawURI)
+	return strings.HasPrefix(lower, "ss://") || strings.HasPrefix(lower, "shadowsocks://")
 }
 
 func buildTrojanOptions(u *url.URL, skipCertVerify bool) (option.TrojanOutboundOptions, error) {
